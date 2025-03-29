@@ -1,0 +1,8 @@
+{
+    "ticker": "AAPL",
+    "rsi_period": 14,
+    "buy_threshold": 30,
+    "sell_threshold": 70,
+    "telegram_token": "7147258608:AAFAJ5clV26Bi48_YwsgtNFNB8gZ8RpGbBM",
+    "chat_id": "7363403276"
+}
