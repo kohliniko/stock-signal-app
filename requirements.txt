@@ -1,5 +1,0 @@
-pandas
-yfinance
-ta-lib
-schedule
-requests
