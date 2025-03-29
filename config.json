@@ -1,7 +1,0 @@
-{
-    "ticker": "AAPL",
-    "rsi_period": 14,
-    "buy_threshold": 30,
-    "sell_threshold": 70,
-    "notification_url": "https://your-notification-service.com/send"
-}
