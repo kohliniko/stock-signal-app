@@ -1,5 +1,3 @@
-# Stock Signal App
-
 import pandas as pd
 import talib
 import yfinance as yf
@@ -9,67 +7,46 @@ import json
 import requests
 
 # Load configuration
-with open('config.json', 'r') as file:
-    config = json.load(file)
-
-TICKER = config['ticker']
-RSI_PERIOD = config['rsi_period']
-BUY_THRESHOLD = config['buy_threshold']
-SELL_THRESHOLD = config['sell_threshold']
-TELEGRAM_TOKEN = config['telegram_token']
-CHAT_ID = config['chat_id']
-
+with open('config.json') as f:
+    config = json.load(f)
 
 def get_stock_data(ticker):
-    data = yf.download(ticker, period='7d', interval='1m')
+    data = yf.download(ticker, period='1d', interval='1m')
     return data
 
+def calculate_rsi(data, period):
+    data['RSI'] = talib.RSI(data['Close'], timeperiod=period)
+    return data
 
-def calculate_signals(data):
-    data['RSI'] = talib.RSI(data['Close'], timeperiod=RSI_PERIOD)
-    buy_signal = data['RSI'] < BUY_THRESHOLD
-    sell_signal = data['RSI'] > SELL_THRESHOLD
-    return buy_signal, sell_signal
+def send_telegram(message):
+    url = f"https://api.telegram.org/bot{config['telegram_token']}/sendMessage"
+    payload = {'chat_id': config['chat_id'], 'text': message}
+    response = requests.post(url, json=payload)
+    print(response.json())
 
+def check_signal():
+    print("Checking for signals...")
+    data = get_stock_data(config['ticker'])
+    if data.empty:
+        print("No data fetched.")
+        return
 
-def send_notification(message):
-    url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
-    payload = {'chat_id': CHAT_ID, 'text': message}
-    try:
-        requests.post(url, json=payload)
-        print(f'Notification sent: {message}')
-    except Exception as e:
-        print(f'Failed to send notification: {e}')
+    data = calculate_rsi(data, config['rsi_period'])
+    latest_rsi = data['RSI'].iloc[-1]
 
+    print(f"Latest RSI: {latest_rsi}")
 
-def job():
-    stock_data = get_stock_data(TICKER)
-    buy, sell = calculate_signals(stock_data)
-    if buy.iloc[-1]:
-        send_notification(f'Buy Signal for {TICKER}')
-    elif sell.iloc[-1]:
-        send_notification(f'Sell Signal for {TICKER}')
+    if latest_rsi < config['buy_threshold']:
+        send_telegram(f"📉 BUY Signal for {config['ticker']} (RSI: {latest_rsi:.2f})")
+    elif latest_rsi > config['sell_threshold']:
+        send_telegram(f"📈 SELL Signal for {config['ticker']} (RSI: {latest_rsi:.2f})")
+    else:
+        print("No trading signal triggered.")
 
+# Run every minute
+schedule.every(1).minute.do(check_signal)
 
-schedule.every(1).minute.do(job)
-
+print("App started. Monitoring stock signals...")
 while True:
     schedule.run_pending()
-    time.sleep(1)
-
-# Configuration file (config.json) template:
-# {
-#     "ticker": "AAPL",
-#     "rsi_period": 14,
-#     "buy_threshold": 30,
-#     "sell_threshold": 70,
-#     "telegram_token": "YOUR_TELEGRAM_BOT_TOKEN",
-#     "chat_id": "YOUR_CHAT_ID"
-# }
-
-# Requirements file (requirements.txt):
-# pandas
-# yfinance
-# ta-lib
-# schedule
-# requests
+    time.sleep(10)
